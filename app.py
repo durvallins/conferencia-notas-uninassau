@@ -39,40 +39,43 @@ def parse_gabarito_md(file_path="MAPEAMENTO_QUESTOES_MATERIAL_ESTUDO.md"):
         return None
 
     data = {}
-    # Encontra todos os blocos de Prova (A, B, C)
-    prova_matches = re.finditer(
-        r'# 🎯 PROVA TIPO (?P<tipo>[A-C])(?P<block>.*?)(?=# 🎯 PROVA TIPO|# 📊 ANÁLISE DE COBERTURA)',
-        content,
-        re.DOTALL
-    )
+    
+    # Divide o conteúdo por provas
+    prova_sections = re.split(r'# 🎯 PROVA TIPO ', content)
+    
+    for section in prova_sections:
+        if not section.strip():
+            continue
 
-    for prova_match in prova_matches:
-        tipo_prova = prova_match.group('tipo')
-        prova_block = prova_match.group('block')
+        tipo_match = re.match(r'([A-C])', section)
+        if not tipo_match:
+            continue
+            
+        tipo_prova = tipo_match.group(1)
         data[tipo_prova] = {}
+        
+        # Divide a seção da prova por questões
+        question_blocks = re.split(r'## \*\*Q', section)
+        
+        for block in question_blocks:
+            if not block.strip():
+                continue
 
-        # Encontra todos os blocos de Questão dentro do bloco da Prova
-        question_matches = re.finditer(
-            r'## \*\*Q(?P<q_num>\d{2}) - (?P<q_content>.*?)(?=## \*\*Q\d{2} -|\Z)',
-            prova_block,
-            re.DOTALL
-        )
-
-        for q_match in question_matches:
-            q_num_str = q_match.group('q_num')
-            q_num = f"Q{q_num_str}"
-            # O conteúdo completo da questão é o match inteiro
-            full_q_content = q_match.group(0)
-
-            titulo_match = re.search(r'## \*\*Q\d{2} - (.*?)\*\*', full_q_content)
+            q_num_match = re.match(r'(\d{2})', block)
+            if not q_num_match:
+                continue
+                
+            q_num = f"Q{q_num_match.group(1)}"
+            
+            titulo_match = re.search(r' - (.*?)\*\*', block)
             titulo = titulo_match.group(1).strip() if titulo_match else "N/A"
 
-            gabarito_match = re.search(r'### 📌 \*\*GABARITO: ([A-E])\*\*', full_q_content)
+            gabarito_match = re.search(r'### 📌 \*\*GABARITO: ([A-E])\*\*', block)
             gabarito = gabarito_match.group(1) if gabarito_match else "N/A"
 
             boundary = r'(?=###|---|\Z)'
 
-            localizacao_match = re.search(r'### 📍 \*\*LOCALIZAÇÃO NO MATERIAL\*\*(.*?)' + boundary, full_q_content, re.DOTALL)
+            localizacao_match = re.search(r'### 📍 \*\*LOCALIZAÇÃO NO MATERIAL\*\*(.*?)' + boundary, block, re.DOTALL)
             localizacao = localizacao_match.group(1).strip() if localizacao_match else ""
 
             pagina_pdf = ""
@@ -81,11 +84,11 @@ def parse_gabarito_md(file_path="MAPEAMENTO_QUESTOES_MATERIAL_ESTUDO.md"):
                 if pagina_match:
                     pagina_pdf = pagina_match.group(1)
 
-            trecho_match = re.search(r'### 📖 \*\*TRECHO EXATO DO MATERIAL\*\*(.*?)' + boundary, full_q_content, re.DOTALL)
+            trecho_match = re.search(r'### 📖 \*\*TRECHO EXATO DO MATERIAL\*\*(.*?)' + boundary, block, re.DOTALL)
             trecho = trecho_match.group(1).strip() if trecho_match else ""
 
             # Regex flexível para as duas variações de "Fundamentação"
-            fundamentacao_match = re.search(r'### (?:✅|📖) \*\*FUNDAMENTAÇÃO(?: DA RESPOSTA)?\*\*(.*?)' + boundary, full_q_content, re.DOTALL)
+            fundamentacao_match = re.search(r'### (?:✅|📖) \*\*FUNDAMENTAÇÃO(?: DA RESPOSTA)?\*\*(.*?)' + boundary, block, re.DOTALL)
             fundamentacao = fundamentacao_match.group(1).strip() if fundamentacao_match else ""
 
             data[tipo_prova][q_num] = {
@@ -382,8 +385,10 @@ def render_2periodo_system():
                     pontos_totais_prova = len(respostas) + num_discursivas  # 8 objetivas + 2 discursivas = 10
                     total_erros = pontos_totais_prova - total_acertos
 
-                    # NOTA TOTAL = acertos objetivas + discursivas + FORM
-                    nota_total = float(acertos_objetivas) + pontos_discursivas + atividade_pontos
+                    # NOTA TOTAL = acertos objetivas + discursivas + FORM (limitada a 10)
+                    # Regra: SE(M8+N8+O8>10; 10; M8+N8+O8)
+                    nota_calculada = float(acertos_objetivas) + pontos_discursivas + atividade_pontos
+                    nota_total = min(nota_calculada, 10.0)  # Limita a nota máxima a 10
 
                     # APROVEITAMENTO: considera objetivas (8 pts) + discursivas (2 pts) = 10 pontos totais da prova
                     percentual = (total_acertos / pontos_totais_prova * 100) if pontos_totais_prova > 0 else 0
