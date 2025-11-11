@@ -51,11 +51,19 @@ prints/
 .vscode/
 .idea/
 
+
 # Arquivos de configuração local
 links.txt
 links.txt.example
+requirements.txt
 amb_virtual.txt
 *.local
+COMMIT_GUIDE.md
+MATERIAL_ESTUDO_POO_FUNDAMENTOS.md
+MAPEAMENTO_QUESTOES_MATERIAL_ESTUDO.md
+MATERIAL_ESTUDO_POO_FUNDAMENTOS.pdf
+CHANGELOG.md
+
 
 # Notebooks Jupyter
 *.ipynb

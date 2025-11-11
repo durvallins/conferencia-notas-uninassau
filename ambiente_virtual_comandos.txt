@@ -1,0 +1,10 @@
+Comandos para Gerenciamento de Ambiente Virtual Python
+
+1. Criar um ambiente virtual:
+   python3 -m venv meu_ambiente
+
+2. Ativar o ambiente virtual:
+   source meu_ambiente/bin/activate
+
+3. Desativar o ambiente virtual:
+   deactivate
